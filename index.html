@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ta">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Class Attendance - Simple</title>
+  <style>
+    body{font-family:Segoe UI,Arial;max-width:900px;margin:20px auto;padding:10px;}
+    h1{font-size:1.4rem;margin-bottom:6px;}
+    .card{border:1px solid #ddd;padding:14px;border-radius:8px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);}
+    label{display:block;margin:8px 0 4px;font-weight:600;font-size:0.95rem;}
+    input,select,button{padding:8px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;}
+    .row{display:flex;gap:8px;align-items:center;}
+    .row > *{flex:1;}
+    table{width:100%;border-collapse:collapse;margin-top:12px;}
+    th,td{padding:8px;border:1px solid #eee;text-align:left;font-size:0.92rem;}
+    .actions{display:flex;gap:8px;margin-top:10px;}
+    .small{font-size:0.85rem;color:#666;}
+  </style>
+</head>
+<body>
+  <h1>Class Data — Attendance / Record</h1>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="date">Date</label>
+        <input type="date" id="date" />
+      </div>
+      <div>
+        <label for="day">Day</label>
+        <select id="day">
+          <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+          <option>Thursday</option><option>Friday</option><option>Saturday</option>
+          <option>Sunday</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="batch">Batch / Time</label>
+    <select id="batch">
+      <option value="Batch 1 (7:30-8:30pm)">Batch 1 (7:30-8:30pm)</option>
+      <option value="Batch 2 (8:30-9:30pm)">Batch 2 (8:30-9:30pm)</option>
+    </select>
+
+    <label for="student">Student name</label>
+    <input id="student" placeholder="Enter student name" />
+
+    <div class="actions">
+      <button id="addBtn">Add Record</button>
+      <button id="clearBtn" type="button">Clear All</button>
+      <button id="exportBtn" type="button">Export CSV</button>
+    </div>
+    <p class="small">Auto fills today's date & day. You can change in the fields before saving.</p>
+  </div>
+
+  <div class="card">
+    <h3>Saved Records</h3>
+    <table id="recordsTable">
+      <thead>
+        <tr><th>#</th><th>Date</th><th>Day</th><th>Batch</th><th>Student</th><th>Saved At</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+  // Storage key
+  const STORAGE_KEY = 'class_records_v1';
+
+  // DOM
+  const dateEl = document.getElementById('date');
+  const dayEl = document.getElementById('day');
+  const batchEl = document.getElementById('batch');
+  const studentEl = document.getElementById('student');
+  const addBtn = document.getElementById('addBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const tbody = document.querySelector('#recordsTable tbody');
+
+  // init date/day with today
+  function setToday(){
+    const today = new Date();
+    dateEl.value = today.toISOString().slice(0,10);
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    dayEl.value = days[today.getDay()];
+  }
+
+  // load records
+  function loadRecords(){
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  function saveRecords(list){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  function render(){
+    const list = loadRecords();
+    tbody.innerHTML = '';
+    list.forEach((r,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i+1}</td>
+        <td>${r.date}</td>
+        <td>${r.day}</td>
+        <td>${r.batch}</td>
+        <td>${r.student}</td>
+        <td>${r.savedAt}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function addRecord(){
+    const date = dateEl.value;
+    const day = dayEl.value;
+    const batch = batchEl.value;
+    const student = studentEl.value.trim();
+    if(!date || !student){
+      alert('Date and Student name required.');
+      return;
+    }
+    const savedAt = new Date().toLocaleString();
+    const list = loadRecords();
+    list.push({date, day, batch, student, savedAt});
+    saveRecords(list);
+    studentEl.value = '';
+    render();
+  }
+
+  function exportCSV(){
+    const list = loadRecords();
+    if(list.length === 0){ alert('No records to export.'); return; }
+    const header = ['Date','Day','Batch','Student','SavedAt'];
+    const rows = list.map(r => [r.date, r.day, r.batch, r.student, r.savedAt]);
+    const csv = [header, ...rows].map(r=> r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `class_records_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // clear (with confirmation)
+  function clearAll(){
+    if(!confirm('Clear all saved records?')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    render();
+  }
+
+  // events
+  addBtn.addEventListener('click', addRecord);
+  exportBtn.addEventListener('click', exportCSV);
+  clearBtn.addEventListener('click', clearAll);
+
+  // initialize
+  setToday();
+  render();
+</script>
+</body>
+</html>
