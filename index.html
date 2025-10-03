@@ -300,7 +300,7 @@
       <div class="table-wrapper">
         <table id="recordsTable">
           <thead>
-            <tr><th>#</th><th>Date</th><th>Day</th><th>Batch</th><th>Trainer</th><th>Student</th><th>Saved At</th></tr>
+            <tr><th>#</th><th>Date</th><th>Day</th><th>Batch</th><th>Time</th><th>Trainer</th><th>Student</th><th>Saved At</th></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -342,25 +342,26 @@
     }
   }
 
-  function setToday(){
+  function setToday() {
     const today = new Date();
-    dateEl.value = today.toISOString().slice(0,10);
-    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    dateEl.value = today.toISOString().slice(0, 10);
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     dayEl.value = days[today.getDay()];
   }
 
-  function render(){
+  function render() {
     tbody.innerHTML = '';
-    if(records.length === 0){
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No records yet</td></tr>';
+    if (records.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">No records yet</td></tr>';
       return;
     }
-    records.forEach((r,i)=>{
+    records.forEach((r, i) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i+1}</td>
+      tr.innerHTML = `<td>${i + 1}</td>
         <td>${r.date}</td>
         <td>${r.day}</td>
         <td>${r.batch}</td>
+        <td>${r.time}</td>
         <td>${r.trainer || '-'}</td>
         <td>${r.student}</td>
         <td>${r.savedAt}</td>`;
@@ -368,27 +369,30 @@
     });
   }
 
-  function getBatchValue(){
+  function getBatchValues() {
     const batchType = document.querySelector('input[name="batchType"]:checked').value;
-    if(batchType === 'preset'){return batchPresetEl.value;}
-    else {
+    if (batchType === 'preset') {
+      let selected = batchPresetEl.value;
+      let [batch, time] = selected.split(' (');
+      time = time ? time.replace(')', '') : '';
+      return { batch, time };
+    } else {
       const num = batchNumberEl.value.trim();
       const time = batchTimeEl.value.trim();
-      if(!num) return '';
-      return time ? `${num} (${time})` : num;
+      return { batch: num, time: time };
     }
   }
 
-  function addRecord(){
+  function addRecord() {
     const date = dateEl.value;
     const day = dayEl.value;
-    const batch = getBatchValue();
+    const { batch, time } = getBatchValues();
     const trainer = trainerEl.value.trim();
     const student = studentEl.value.trim();
-    if(!date || !student){alert('Date and Student name are required.');return;}
-    if(!batch){alert('Please enter batch information.');return;}
+    if (!date || !student) { alert('Date and Student name are required.'); return; }
+    if (!batch) { alert('Please enter batch information.'); return; }
     const savedAt = new Date().toLocaleString();
-    records.push({date, day, batch, trainer, student, savedAt});
+    records.push({ date, day, batch, time, trainer, student, savedAt });
     saveToStorage(); // save when adding
     studentEl.value = '';
     batchNumberEl.value = '';
@@ -396,22 +400,22 @@
     render();
   }
 
-  function exportCSV(){
-    if(records.length === 0){alert('No records to export.');return;}
-    const header = ['Date','Day','Batch','Trainer','Student','SavedAt'];
-    const rows = records.map(r => [r.date, r.day, r.batch, r.trainer || '', r.student, r.savedAt]);
-    const csv = [header, ...rows].map(r=> r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  function exportCSV() {
+    if (records.length === 0) { alert('No records to export.'); return; }
+    const header = ['Date', 'Day', 'Batch', 'Time', 'Trainer', 'Student', 'SavedAt'];
+    const rows = records.map(r => [r.date, r.day, r.batch, r.time, r.trainer || '', r.student, r.savedAt]);
+    const csv = [header, ...rows].map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `class_records_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a);a.click();a.remove();
+    a.download = `class_records_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   }
 
-  function clearAll(){
-    if(!confirm('Clear all saved records?')) return;
+  function clearAll() {
+    if (!confirm('Clear all saved records?')) return;
     records.length = 0;
     saveToStorage(); // clear from storage also
     render();
@@ -419,8 +423,14 @@
 
   batchTypeRadios.forEach(radio => {
     radio.addEventListener('change', (e) => {
-      if(e.target.value === 'manual'){presetBatchDiv.style.display = 'none';manualBatchDiv.classList.add('active');}
-      else{presetBatchDiv.style.display = 'block';manualBatchDiv.classList.remove('active');}
+      if (e.target.value === 'manual') {
+        presetBatchDiv.style.display = 'none';
+        manualBatchDiv.classList.add('active');
+      }
+      else {
+        presetBatchDiv.style.display = 'block';
+        manualBatchDiv.classList.remove('active');
+      }
     });
   });
 
@@ -433,6 +443,7 @@
   loadFromStorage();
   render();
 </script>
+
 
 </body>
 </html>
