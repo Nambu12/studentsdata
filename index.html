@@ -313,7 +313,7 @@
   </footer>
 
 <script>
-  const records = [];
+  let records = [];
   const dateEl = document.getElementById('date');
   const dayEl = document.getElementById('day');
   const batchPresetEl = document.getElementById('batchPreset');
@@ -329,12 +329,26 @@
   const manualBatchDiv = document.getElementById('manualBatch');
   const batchTypeRadios = document.querySelectorAll('input[name="batchType"]');
 
+  // Save records to localStorage
+  function saveToStorage() {
+    localStorage.setItem('attendanceRecords', JSON.stringify(records));
+  }
+
+  // Load records from localStorage
+  function loadFromStorage() {
+    const saved = localStorage.getItem('attendanceRecords');
+    if (saved) {
+      records = JSON.parse(saved);
+    }
+  }
+
   function setToday(){
     const today = new Date();
     dateEl.value = today.toISOString().slice(0,10);
     const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     dayEl.value = days[today.getDay()];
   }
+
   function render(){
     tbody.innerHTML = '';
     if(records.length === 0){
@@ -353,6 +367,7 @@
       tbody.appendChild(tr);
     });
   }
+
   function getBatchValue(){
     const batchType = document.querySelector('input[name="batchType"]:checked').value;
     if(batchType === 'preset'){return batchPresetEl.value;}
@@ -363,6 +378,7 @@
       return time ? `${num} (${time})` : num;
     }
   }
+
   function addRecord(){
     const date = dateEl.value;
     const day = dayEl.value;
@@ -373,11 +389,13 @@
     if(!batch){alert('Please enter batch information.');return;}
     const savedAt = new Date().toLocaleString();
     records.push({date, day, batch, trainer, student, savedAt});
+    saveToStorage(); // save when adding
     studentEl.value = '';
     batchNumberEl.value = '';
     batchTimeEl.value = '';
     render();
   }
+
   function exportCSV(){
     if(records.length === 0){alert('No records to export.');return;}
     const header = ['Date','Day','Batch','Trainer','Student','SavedAt'];
@@ -391,17 +409,30 @@
     document.body.appendChild(a);a.click();a.remove();
     URL.revokeObjectURL(url);
   }
-  function clearAll(){if(!confirm('Clear all saved records?')) return;records.length = 0;render();}
+
+  function clearAll(){
+    if(!confirm('Clear all saved records?')) return;
+    records.length = 0;
+    saveToStorage(); // clear from storage also
+    render();
+  }
+
   batchTypeRadios.forEach(radio => {
     radio.addEventListener('change', (e) => {
       if(e.target.value === 'manual'){presetBatchDiv.style.display = 'none';manualBatchDiv.classList.add('active');}
       else{presetBatchDiv.style.display = 'block';manualBatchDiv.classList.remove('active');}
     });
   });
+
   addBtn.addEventListener('click', addRecord);
   exportBtn.addEventListener('click', exportCSV);
   clearBtn.addEventListener('click', clearAll);
-  setToday();render();
+
+  // INIT
+  setToday();
+  loadFromStorage();
+  render();
 </script>
+
 </body>
 </html>
